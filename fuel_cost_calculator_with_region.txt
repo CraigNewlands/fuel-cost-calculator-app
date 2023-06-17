@@ -1,0 +1,655 @@
+import 'dart:collection';
+
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  runApp(MaterialApp(
+    theme: ThemeData(
+      primarySwatch: Colors.deepOrange,
+      primaryColor: Colors.deepOrange,
+    ),
+    home: FuelCostCalculator(),
+  ));
+}
+
+class FuelCostCalculator extends StatefulWidget {
+  @override
+  _FuelCostCalculatorState createState() => _FuelCostCalculatorState();
+}
+
+class Region {
+  String name;
+  String fuelPriceUnits;
+  String fuelConsumptionUnits;
+  String distanceUnits;
+  String costUnits;
+
+  Region(this.name, this.fuelPriceUnits, this.fuelConsumptionUnits, this.distanceUnits, this.costUnits);
+}
+
+class _FuelCostCalculatorState extends State<FuelCostCalculator> {
+  final Map<String, Region> regionMap = HashMap();
+
+  bool check = false;
+
+  String regionDropDownValue = "UK";
+  String fuelPriceDropDownValue = "£ per litre";
+  String fuelConsumptionDropDownValue = "mpg";
+  String distanceDropDownValue = "miles";
+
+  var regionDropDownValues = [
+    "UK",
+    "US",
+    "Europe",
+    "Australia",
+    "India",
+    "China",
+    "Other", // maybe when "Other" is selected then the user can change the other dropdowns and if not then they are greyed out and cannot be changed.
+  ];
+  var fuelPriceDropDownValues = [
+    "£ per litre",
+    "\$ per gallon",
+    "€ per litre",
+    "\$ per litre",
+    "Rs. per litre",
+    "¥ per litre",
+  ];
+  var fuelConsumptionDropDownValues = [
+    "mpg",
+    "mpg (US)",
+    "L/100km",
+  ];
+  var distanceDropDownValues = [
+    "miles",
+    "km",
+  ];
+
+  final fuelPriceTextEditingController = TextEditingController();
+  final fuelConsumptionTextEditingController = TextEditingController();
+  final distanceTextEditingController = TextEditingController();
+  final costTextEditingController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    loadState();
+    regionMap["UK"]        = Region("UK",        "£ per litre",    "mpg",      "miles", "Cost (£)");
+    regionMap["US"]        = Region("US",        "\$ per gallon",  "mpg (US)", "miles", "Cost (\$)");
+    regionMap["Europe"]    = Region("Europe",    "€ per litre",    "L/100km",  "km",    "Cost (€)");
+    regionMap["Australia"] = Region("Australia", "\$ per litre",   "L/100km",  "km",    "Cost (\$)");
+    regionMap["India"]     = Region("India",     "Rs. per litre",  "L/100km",  "km",    "Cost (Rs.)");
+    regionMap["China"]     = Region("China",     "¥ per litre",    "L/100km",  "km",    "Cost (¥)");
+  }
+
+  Future<void> loadState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      check = prefs.getBool("checkBox") ?? false;
+      if (check == false) {
+        displayHowToUsePrompt();
+      }
+
+      if (prefs.getString("regionDropDownValue") != null) {
+        regionDropDownValue = prefs.getString("regionDropDownValue")!;
+      }
+      if (prefs.getString("fuelPriceDropDownValue") != null) {
+        fuelPriceDropDownValue = prefs.getString("fuelPriceDropDownValue")!;
+      }
+      if (prefs.getString("fuelConsumptionDropDownValue") != null) {
+        fuelConsumptionDropDownValue = prefs.getString("fuelConsumptionDropDownValue")!;
+      }
+      if (prefs.getString("distanceDropDownValue") != null) {
+        distanceDropDownValue = prefs.getString("distanceDropDownValue")!;
+      }
+      if (prefs.getString("fuelPriceValue") != null) {
+        fuelPriceTextEditingController.text = prefs.getString("fuelPriceValue")!;
+      }
+      if (prefs.getString("fuelConsumptionValue") != null) {
+        fuelConsumptionTextEditingController.text = prefs.getString("fuelConsumptionValue")!;
+      }
+      if (prefs.getString("distanceValue") != null) {
+        distanceTextEditingController.text = prefs.getString("distanceValue")!;
+      }
+      if (prefs.getString("costValue") != null) {
+        costTextEditingController.text = prefs.getString("costValue")!;
+      }
+    });
+  }
+
+  final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaffoldMessenger(
+      key: scaffoldMessengerKey,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.deepOrange,
+          title: const Text("Fuel Cost Calculator"),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: DropdownButtonFormField(
+                isExpanded: true,
+                style: const TextStyle(fontSize: 20, color: Colors.black),
+                value: regionDropDownValue,
+                items: regionDropDownValues.map((String items) {
+                  return DropdownMenuItem(
+                    value: items,
+                    child: Text(items),
+                    // enabled: items != 'Custom',
+                  );
+                }).toList(),
+
+                onChanged: (String? newValue) {
+                  setState(() {
+                    regionDropDownValue = newValue!;
+                  });
+                  updateDropDowns(newValue!);
+                  computeCost();
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Region',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(10.0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // First row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                const Expanded(
+                    flex: 6,
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Text(
+                        "Fuel Price",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                    )
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: TextField(
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 20),
+                      decoration: const InputDecoration(
+                          hintText: 'e.g. 1.74'
+                      ),
+                      keyboardType: TextInputType.number,
+                      controller: fuelPriceTextEditingController,
+                      onChanged: (String? newValue) {
+                        computeCost();
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton(
+                        isExpanded: true,
+                        style: const TextStyle(fontSize: 20, color: Colors.black),
+                        value: fuelPriceDropDownValue,
+                        items: fuelPriceDropDownValues.map((String items) {
+                          return DropdownMenuItem(
+                            value: items,
+                            child: Text(items),
+                          );
+                        }).toList(),
+
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            fuelPriceDropDownValue = newValue!;
+                          });
+                          checkForCustomRegion();
+                          checkForExistingRegion();
+                          computeCost();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Second row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                const Expanded(
+                    flex: 6,
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Text(
+                        "Fuel Consumption",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                    )
+                ),
+                Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: TextField(
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 20),
+                        decoration: const InputDecoration(
+                            hintText: 'e.g. 52.5'
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: fuelConsumptionTextEditingController,
+                        onChanged: (String? newValue) {
+                          computeCost();
+                        },
+                      ),
+                    )
+                ),
+                Expanded(
+                  flex: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton(
+                        isExpanded: true,
+                        style: const TextStyle(fontSize: 20, color: Colors.black),
+                        value: fuelConsumptionDropDownValue,
+                        items: fuelConsumptionDropDownValues.map((String items) {
+                          return DropdownMenuItem(
+                            value: items,
+                            child: Text(items),
+                          );
+                        }).toList(),
+
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            fuelConsumptionDropDownValue = newValue!;
+                          });
+                          checkForCustomRegion();
+                          checkForExistingRegion();
+                          computeCost();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Third row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                const Expanded(
+                    flex: 6,
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Text(
+                        "Distance",
+                        style: TextStyle(fontSize: 20),
+                      ),
+                    )
+                ),
+                Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: TextField(
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 20),
+                        decoration: const InputDecoration(
+                            hintText: 'e.g. 100'
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: distanceTextEditingController,
+                        onChanged: (String? newValue) {
+                          computeCost();
+                        },
+                      ),
+                    )
+                ),
+                Expanded(
+                  flex: 5,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton(
+                        isExpanded: true,
+                        style: const TextStyle(fontSize: 20, color: Colors.black),
+                        value: distanceDropDownValue,
+                        items: distanceDropDownValues.map((String items) {
+                          return DropdownMenuItem(
+                            value: items,
+                            child: Text(items),
+                          );
+                        }).toList(),
+
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            distanceDropDownValue = newValue!;
+                          });
+                          checkForCustomRegion();
+                          checkForExistingRegion();
+                          computeCost();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Fourth row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                const Expanded(
+                    flex: 6,
+                    child: Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Text(
+                        "Cost",
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                ),
+                Expanded(
+                  flex: 4,
+                  child: TextField(
+                    enabled: false,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    controller: costTextEditingController,
+                  ),
+                ),
+                const Expanded(
+                    flex: 5,
+                    child: Text("")
+                ),
+              ],
+            ),
+            // Fifth row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Widget cancelButton = TextButton(
+                            child: const Text("No"),
+                            onPressed:  () {Navigator.pop(context);},
+                          );
+                          Widget continueButton = TextButton(
+                            child: const Text("Yes"),
+                            onPressed:  () {
+                              fuelPriceTextEditingController.clear();
+                              fuelConsumptionTextEditingController.clear();
+                              distanceTextEditingController.clear();
+                              costTextEditingController.clear();
+                              Navigator.pop(context);
+                            },
+                          );
+                          AlertDialog alert = AlertDialog(
+                            contentPadding: const EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 0),
+                            title: const Text("Clear values?"),
+                            content: const Text("Are you sure you want to clear the values?"),
+                            actions: [
+                              cancelButton,
+                              continueButton,
+                            ],
+                          );
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return alert;
+                            },
+                          );
+                        },
+                        child: const Text(
+                          'CLEAR VALUES',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    )
+                ),
+                Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          saveState();
+                          const snackBar = SnackBar(
+                              content: Text(
+                                "Details saved successfully!",
+                              ));
+                          scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+                        },
+                        child: const Text(
+                          'SAVE DETAILS',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    )
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void displayHowToUsePrompt() {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(builder: (context, setState) {
+            return AlertDialog(
+              contentPadding: const EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 0),
+              title: const Text("How to use"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Row(
+                    children: const [
+                      Expanded(
+                        child: Text("1. Select a region to automatically update units or select individual units of your choice from the drop down menus. \n2. Fill in the values for fuel price, fuel consumption and distance. \n\nNote: values and units can be saved between closing and reopening the app by using the \"save details\" button."),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      const Text("Don't show again"),
+                      Checkbox(
+                        value: check,
+                        onChanged: (bool? value){
+                          setState(() {
+                            check = value!;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text("Ok"),
+                  onPressed: () {
+                    saveSwitchValue();
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          });
+        });
+  }
+
+  Future<void> saveSwitchValue() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool("checkBox", check);
+  }
+
+  void computeCost() {
+    if (fuelPriceTextEditingController.text.isEmpty &&
+        fuelConsumptionTextEditingController.text.isEmpty &&
+        distanceTextEditingController.text.isEmpty) {
+      costTextEditingController.text = "";
+      return;
+    }
+
+    double fuelPrice = double.parse(fuelPriceTextEditingController.text);
+    double fuelConsumption = double.parse(fuelConsumptionTextEditingController.text);
+    double distance = double.parse(distanceTextEditingController.text);
+
+    double calculation = 0;
+    switch (regionDropDownValue) {
+      case "US":
+        calculation = fuelPrice * distance / fuelConsumption;
+        break;
+      case "Europe":
+      case "Australia":
+      case "China":
+      case "India":
+        calculation = fuelPrice * fuelConsumption * distance / 100;
+        break;
+      case "UK":
+        double litresInImperialGallon = 4.54609;
+        calculation = litresInImperialGallon * fuelPrice * distance / fuelConsumption;
+        break;
+      default:
+        calculation = calculateCustomCost(fuelPrice, fuelConsumption, distance);
+    }
+
+    switch(fuelPriceDropDownValue) {
+      case "£ per litre":
+        costTextEditingController.text = "£${calculation.toStringAsFixed(2)}";
+        break;
+      case "\$ per gallon":
+      case "\$ per litre":
+        costTextEditingController.text = "\$${calculation.toStringAsFixed(2)}";
+        break;
+      case "€ per litre":
+        costTextEditingController.text = "€${calculation.toStringAsFixed(2)}";
+        break;
+      case "Rs. per litre":
+        costTextEditingController.text = "Rs. ${calculation.toStringAsFixed(2)}";
+        break;
+      case "¥ per litre":
+        costTextEditingController.text = "¥${calculation.toStringAsFixed(2)}";
+        break;
+    }
+  }
+
+  double calculateCustomCost(double fuelPrice, double fuelConsumption, double distance) {
+    // Converts all distances to miles
+    if (distanceDropDownValue == "km") {
+      distance = distance * 0.621371;
+    }
+
+    // Converts all fuel consumption to mpg (imperial)
+    if (fuelConsumptionDropDownValue == "mpg (US)") {
+      fuelConsumption = fuelConsumption * 0.832674;
+    }
+    else if (fuelConsumptionDropDownValue == "L/100km") {
+      fuelConsumption = 282.481 / fuelConsumption;
+    }
+    else if (fuelConsumptionDropDownValue == "km/L") {
+      fuelConsumption = fuelConsumption * 2.82481;
+    }
+
+    double litresInImperialGallon = 4.54609;
+    double calculation = litresInImperialGallon * fuelPrice * distance / fuelConsumption;
+    if (fuelPriceDropDownValue == "\$ per gallon") {
+      calculation = (fuelPrice * distance) / (fuelConsumption * 1.20095);
+    }
+    return calculation;
+  }
+
+  void updateDropDowns(String region) {
+    const snackBar = SnackBar(duration: Duration(seconds: 1), content: Text("Units updated."));
+
+    switch(region) {
+      case "UK":
+        fuelPriceDropDownValue = "£ per litre";
+        fuelConsumptionDropDownValue = "mpg";
+        distanceDropDownValue = "miles";
+        scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+        break;
+      case "US":
+        fuelPriceDropDownValue = "\$ per gallon";
+        fuelConsumptionDropDownValue = "mpg (US)";
+        distanceDropDownValue = "miles";
+        scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+        break;
+      case "Australia":
+        fuelPriceDropDownValue = "\$ per litre";
+        fuelConsumptionDropDownValue = "L/100km";
+        distanceDropDownValue = "km";
+        scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+        break;
+      case "Europe":
+        fuelPriceDropDownValue = "€ per litre";
+        fuelConsumptionDropDownValue = "L/100km";
+        distanceDropDownValue = "km";
+        scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+        break;
+      case "India":
+        fuelPriceDropDownValue = "Rs. per litre";
+        fuelConsumptionDropDownValue = "L/100km";
+        distanceDropDownValue = "km";
+        scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+        break;
+      case "China":
+        fuelPriceDropDownValue = "¥ per litre";
+        fuelConsumptionDropDownValue = "L/100km";
+        distanceDropDownValue = "km";
+        scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+        break;
+    }
+  }
+
+  void checkForCustomRegion() {
+    Region? currentRegion = regionMap[regionDropDownValue];
+    if (fuelPriceDropDownValue != currentRegion?.fuelPriceUnits ||
+        fuelConsumptionDropDownValue != currentRegion?.fuelConsumptionUnits ||
+        distanceDropDownValue != currentRegion?.distanceUnits) {
+      regionDropDownValue = "Other";
+    }
+  }
+
+  void checkForExistingRegion() {
+    for (Region reg in regionMap.values) {
+      if (fuelPriceDropDownValue == reg.fuelPriceUnits &&
+          fuelConsumptionDropDownValue == reg.fuelConsumptionUnits &&
+          distanceDropDownValue == reg.distanceUnits) {
+        regionDropDownValue = reg.name;
+      }
+    }
+  }
+
+  Future<void> saveState() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString("regionDropDownValue", regionDropDownValue);
+    prefs.setString("fuelPriceDropDownValue", fuelPriceDropDownValue);
+    prefs.setString("fuelConsumptionDropDownValue", fuelConsumptionDropDownValue);
+    prefs.setString("distanceDropDownValue", distanceDropDownValue);
+    prefs.setString("fuelPriceValue", fuelPriceTextEditingController.text);
+    prefs.setString("fuelConsumptionValue", fuelConsumptionTextEditingController.text);
+    prefs.setString("distanceValue", distanceTextEditingController.text);
+    prefs.setString("costValue", costTextEditingController.text);
+  }
+}
+
+

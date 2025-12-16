@@ -6,25 +6,38 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fuel_cost_calculator/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Fuel Cost Calculator smoke test', (WidgetTester tester) async {
+    // Mock MobileAds initialization
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/google_mobile_ads'),
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'MobileAds#initialize') {
+          return <String, dynamic>{
+            'adapterStatuses': <String, dynamic>{},
+            'initializationStatus': <String, dynamic>{
+              'adapterStatuses': <String, dynamic>{},
+            },
+          };
+        }
+        return null;
+      },
+    );
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FuelCostCalculator(),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the app title is displayed.
+    expect(find.text('Fuel Cost Calculator'), findsOneWidget);
   });
 }

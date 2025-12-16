@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize(); //<-- SEE HERE
+  await MobileAds.instance.initialize(); //<-- SEE HERE
   runApp(MaterialApp(
     debugShowCheckedModeBanner:false,
     theme: ThemeData(
@@ -20,8 +20,10 @@ void main() {
 }
 
 class FuelCostCalculator extends StatefulWidget {
+  const FuelCostCalculator({super.key});
+
   @override
-  _FuelCostCalculatorState createState() => _FuelCostCalculatorState();
+  State<FuelCostCalculator> createState() => _FuelCostCalculatorState();
 }
 
 class Region {
@@ -448,7 +450,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
             if (_isBannerAdReady)
               Align(
                 alignment: Alignment.bottomCenter,
-                child: Container(
+                child: SizedBox(
                   width: _bannerAd.size.width.toDouble(),
                   height: _bannerAd.size.height.toDouble(),
                   child: AdWidget(ad: _bannerAd),

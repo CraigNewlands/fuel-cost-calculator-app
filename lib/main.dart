@@ -7,15 +7,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await MobileAds.instance.initialize(); //<-- SEE HERE
+  await MobileAds.instance.initialize();
   runApp(MaterialApp(
-    debugShowCheckedModeBanner:false,
+    debugShowCheckedModeBanner: false,
     theme: ThemeData(
-      brightness: Brightness.light,
-      primarySwatch: Colors.deepOrange,
-      primaryColor: Colors.deepOrange,
+      useMaterial3: true,
+      colorScheme: ColorScheme(
+        brightness: Brightness.light,
+        primary: Colors.deepOrange, // Vibrant orange for primary actions
+        onPrimary: Colors.white,
+        secondary: Colors.deepOrange.shade700,
+        onSecondary: Colors.white,
+        tertiary: Colors.orange.shade300,
+        onTertiary: Colors.black87,
+        error: Colors.red,
+        onError: Colors.white,
+        surface: Colors.white,
+        onSurface: Colors.black87,
+        surfaceContainerHighest: Colors.grey.shade100,
+        primaryContainer: Colors.deepOrange.shade50,
+        onPrimaryContainer: Colors.deepOrange.shade900,
+      ),
+      appBarTheme: const AppBarTheme(
+        centerTitle: true,
+      ),
     ),
-    home: FuelCostCalculator(),
+    home: const FuelCostCalculator(),
   ));
 }
 
@@ -154,309 +171,315 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
       key: scaffoldMessengerKey,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.deepOrange,
           title: const Text("Fuel Cost Calculator"),
+          elevation: 0,
         ),
-        body: Column(
-          children: [
-            // First row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
               children: [
-                const Expanded(
-                    flex: 6,
-                    child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text(
-                        "Fuel Price",
-                        style: TextStyle(fontSize: 20),
-                      ),
-                    )
-                ),
-                Expanded(
-                  flex: 4,
+                // First row - Fuel Price
+                Card(
+                  elevation: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: TextField(
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 20),
-                      decoration: const InputDecoration(
-                          hintText: 'e.g. 1.74'
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-                      controller: fuelPriceTextEditingController,
-                      onChanged: (String? newValue) {
-                        computeCost();
-                      },
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton(
-                        isExpanded: true,
-                        style: const TextStyle(fontSize: 20, color: Colors.black),
-                        value: fuelPriceDropDownValue,
-                        items: fuelPriceDropDownValues.map((String items) {
-                          return DropdownMenuItem(
-                            value: items,
-                            child: Text(items),
-                          );
-                        }).toList(),
-
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            fuelPriceDropDownValue = newValue!;
-                          });
-                          computeCost();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Second row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Expanded(
-                    flex: 6,
-                    child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text(
-                        "Fuel Consumption",
-                        style: TextStyle(fontSize: 20),
-                      ),
-                    )
-                ),
-                Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(10.0),
-                      child: TextField(
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 20),
-                        decoration: const InputDecoration(
-                            hintText: 'e.g. 52.5'
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: const Text(
+                            "Fuel Price",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
                         ),
-                        keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-                        controller: fuelConsumptionTextEditingController,
-                        onChanged: (String? newValue) {
-                          computeCost();
-                        },
-                      ),
-                    )
-                ),
-                Expanded(
-                  flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton(
-                        isExpanded: true,
-                        style: const TextStyle(fontSize: 20, color: Colors.black),
-                        value: fuelConsumptionDropDownValue,
-                        items: fuelConsumptionDropDownValues.map((String items) {
-                          return DropdownMenuItem(
-                            value: items,
-                            child: Text(items),
-                          );
-                        }).toList(),
-
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            fuelConsumptionDropDownValue = newValue!;
-                          });
-                          computeCost();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Third row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Expanded(
-                    flex: 6,
-                    child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text(
-                        "Distance",
-                        style: TextStyle(fontSize: 20),
-                      ),
-                    )
-                ),
-                Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(10.0),
-                      child: TextField(
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 20),
-                        decoration: const InputDecoration(
-                            hintText: 'e.g. 100'
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-                        controller: distanceTextEditingController,
-                        onChanged: (String? newValue) {
-                          computeCost();
-                        },
-                      ),
-                    )
-                ),
-                Expanded(
-                  flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton(
-                        isExpanded: true,
-                        style: const TextStyle(fontSize: 20, color: Colors.black),
-                        value: distanceDropDownValue,
-                        items: distanceDropDownValues.map((String items) {
-                          return DropdownMenuItem(
-                            value: items,
-                            child: Text(items),
-                          );
-                        }).toList(),
-
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            distanceDropDownValue = newValue!;
-                          });
-                          computeCost();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Fourth row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Expanded(
-                    flex: 13,
-                    child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text(
-                        "Cost",
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                    )
-                ),
-                Expanded(
-                  flex: 17,
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                    ),
-                    enabled: false,
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
-                    controller: costTextEditingController,
-                  ),
-                ),
-                const Expanded(
-                    flex: 0,
-                    child: Text("")
-                ),
-              ],
-            ),
-            // Fifth row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Widget cancelButton = TextButton(
-                            child: const Text("No"),
-                            onPressed:  () {Navigator.pop(context);},
-                          );
-                          Widget continueButton = TextButton(
-                            child: const Text("Yes"),
-                            onPressed:  () {
-                              fuelPriceTextEditingController.clear();
-                              fuelConsumptionTextEditingController.clear();
-                              distanceTextEditingController.clear();
-                              costTextEditingController.clear();
-                              Navigator.pop(context);
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 16),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 1.74',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
+                            controller: fuelPriceTextEditingController,
+                            onChanged: (String? newValue) {
+                              computeCost();
                             },
-                          );
-                          AlertDialog alert = AlertDialog(
-                            contentPadding: const EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 0),
-                            title: const Text("Clear values?"),
-                            content: const Text("Are you sure you want to clear the values?"),
-                            actions: [
-                              cancelButton,
-                              continueButton,
-                            ],
-                          );
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: fuelPriceDropDownValue,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            style: const TextStyle(fontSize: 16, color: Colors.black87),
+                            dropdownColor: Colors.white,
+                            items: fuelPriceDropDownValues.map((String items) {
+                              return DropdownMenuItem(
+                                value: items,
+                                child: Text(items, style: const TextStyle(color: Colors.black87)),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                fuelPriceDropDownValue = newValue!;
+                              });
+                              computeCost();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Second row - Fuel Consumption
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: const Text(
+                            "Fuel Consumption",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 16),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 52.5',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
+                            controller: fuelConsumptionTextEditingController,
+                            onChanged: (String? newValue) {
+                              computeCost();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: fuelConsumptionDropDownValue,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            style: const TextStyle(fontSize: 16, color: Colors.black87),
+                            dropdownColor: Colors.white,
+                            items: fuelConsumptionDropDownValues.map((String items) {
+                              return DropdownMenuItem(
+                                value: items,
+                                child: Text(items, style: const TextStyle(color: Colors.black87)),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                fuelConsumptionDropDownValue = newValue!;
+                              });
+                              computeCost();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Third row - Distance
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: const Text(
+                            "Distance",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 16),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 100',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
+                            controller: distanceTextEditingController,
+                            onChanged: (String? newValue) {
+                              computeCost();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: distanceDropDownValue,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            style: const TextStyle(fontSize: 16, color: Colors.black87),
+                            dropdownColor: Colors.white,
+                            items: distanceDropDownValues.map((String items) {
+                              return DropdownMenuItem(
+                                value: items,
+                                child: Text(items, style: const TextStyle(color: Colors.black87)),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                distanceDropDownValue = newValue!;
+                              });
+                              computeCost();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Fourth row - Cost Result
+                Card(
+                  elevation: 3,
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      children: [
+                        const Text(
+                          "Cost: ",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: costTextEditingController,
+                            enabled: false,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: costTextEditingController.text.isEmpty
+                                  ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
+                                  : Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                            textAlign: TextAlign.right,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: "Enter values above",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Fifth row - Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
-                              return alert;
+                              return AlertDialog(
+                                title: const Text("Clear values?"),
+                                content: const Text("Are you sure you want to clear all values?"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("Cancel"),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () {
+                                      fuelPriceTextEditingController.clear();
+                                      fuelConsumptionTextEditingController.clear();
+                                      distanceTextEditingController.clear();
+                                      costTextEditingController.clear();
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text("Clear"),
+                                  ),
+                                ],
+                              );
                             },
                           );
                         },
-                        child: const Padding(
-                          padding: EdgeInsets.all(7.0),
-                          child: Text(
-                            textAlign: TextAlign.center,
-                            'CLEAR VALUES',
-                            style: TextStyle(fontSize: 18),
-                          ),
+                        icon: const Icon(Icons.clear),
+                        label: const Text("Clear"),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                       ),
-                    )
-                ),
-                Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: ElevatedButton(
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
                         onPressed: () {
                           saveState();
-                          const snackBar = SnackBar(
-                              content: Text(
-                                "Details saved successfully!",
-                              ));
-                          scaffoldMessengerKey.currentState?.showSnackBar(snackBar);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Details saved successfully!"),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
                         },
-                        child: const Padding(
-                          padding: EdgeInsets.all(7.0),
-                          child: Text(
-                            textAlign: TextAlign.center,
-                            'SAVE DETAILS',
-                            style: TextStyle(fontSize: 18),
-                          ),
+                        icon: const Icon(Icons.save),
+                        label: const Text("Save"),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                       ),
-                    )
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                // Add the banner ad code at the bottom
+                if (_isBannerAdReady)
+                  SizedBox(
+                    width: _bannerAd.size.width.toDouble(),
+                    height: _bannerAd.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd),
+                  ),
               ],
             ),
-            // Add the banner ad code at the bottom
-            if (_isBannerAdReady)
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: SizedBox(
-                  width: _bannerAd.size.width.toDouble(),
-                  height: _bannerAd.size.height.toDouble(),
-                  child: AdWidget(ad: _bannerAd),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -468,40 +491,42 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
         builder: (context) {
           return StatefulBuilder(builder: (context, setState) {
             return AlertDialog(
-              contentPadding: const EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 0),
               title: const Text("How to use"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
+                  const SizedBox(height: 8),
                   const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("1. "),
+                      Text("1. ", style: TextStyle(fontWeight: FontWeight.bold)),
                       Expanded(
-                        child: Text("Select your units of choice from the drop down menus."),
+                        child: Text("Select your units of choice from the dropdown menus."),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
                   const Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("2. "),
+                      Text("2. ", style: TextStyle(fontWeight: FontWeight.bold)),
                       Expanded(
                         child: Text("Fill in the values for fuel price, fuel consumption and distance."),
                       ),
                     ],
                   ),
-                  const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text("\nNote: values and units can be saved between sessions by using the \"save details\" button."),
-                      ),
-                    ],
+                  const SizedBox(height: 12),
+                  Text(
+                    "Note: Values and units can be saved between sessions using the Save button.",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
+                  const SizedBox(height: 16),
                   Row(
                     children: <Widget>[
-                      const Text("Don't show again"),
                       Checkbox(
                         value: check,
                         onChanged: (bool? value){
@@ -510,17 +535,18 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                           });
                         },
                       ),
+                      const Text("Don't show again"),
                     ],
                   ),
                 ],
               ),
               actions: <Widget>[
-                TextButton(
-                  child: const Text("Ok"),
+                FilledButton(
                   onPressed: () {
                     saveSwitchValue();
                     Navigator.pop(context);
                   },
+                  child: const Text("Got it"),
                 ),
               ],
             );

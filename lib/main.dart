@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'ad_helper.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -180,6 +181,9 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
   final fuelConsumptionTextEditingController = TextEditingController();
   final distanceTextEditingController = TextEditingController();
   final costTextEditingController = TextEditingController();
+  
+  double? _totalCost;
+  double? _costPerUnit;
 
   @override
   void initState() {
@@ -260,68 +264,74 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          flex: 2,
-                          child: const Text(
-                            "Fuel Price",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
+                        const Text(
+                          "Fuel Price",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         ),
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 16),
-                            decoration: InputDecoration(
-                              hintText: 'e.g. 1.74',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-                            controller: fuelPriceTextEditingController,
-                            onChanged: (String? newValue) {
-                              computeCost();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 3,
-                          child: DropdownButtonFormField<String>(
-                            value: fuelPriceDropDownValue,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            dropdownColor: Theme.of(context).colorScheme.surface,
-                            items: fuelPriceDropDownValues.map((String items) {
-                              return DropdownMenuItem(
-                                value: items,
-                                child: Text(
-                                  items,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface,
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(fontSize: 16),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. 1.74',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                fuelPriceDropDownValue = newValue!;
-                              });
-                              computeCost();
-                            },
-                          ),
+                                keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
+                                controller: fuelPriceTextEditingController,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                ],
+                                onChanged: (String? newValue) {
+                                  computeCost();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: DropdownButtonFormField<String>(
+                                value: fuelPriceDropDownValue,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                                dropdownColor: Theme.of(context).colorScheme.surface,
+                                items: fuelPriceDropDownValues.map((String items) {
+                                  return DropdownMenuItem(
+                                    value: items,
+                                    child: Text(
+                                      items,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    fuelPriceDropDownValue = newValue!;
+                                  });
+                                  computeCost();
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -333,68 +343,74 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          flex: 2,
-                          child: const Text(
-                            "Fuel Consumption",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
+                        const Text(
+                          "Fuel Consumption",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         ),
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 16),
-                            decoration: InputDecoration(
-                              hintText: 'e.g. 52.5',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-                            controller: fuelConsumptionTextEditingController,
-                            onChanged: (String? newValue) {
-                              computeCost();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 3,
-                          child: DropdownButtonFormField<String>(
-                            value: fuelConsumptionDropDownValue,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            dropdownColor: Theme.of(context).colorScheme.surface,
-                            items: fuelConsumptionDropDownValues.map((String items) {
-                              return DropdownMenuItem(
-                                value: items,
-                                child: Text(
-                                  items,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface,
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(fontSize: 16),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. 52.5',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                fuelConsumptionDropDownValue = newValue!;
-                              });
-                              computeCost();
-                            },
-                          ),
+                                keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
+                                controller: fuelConsumptionTextEditingController,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                ],
+                                onChanged: (String? newValue) {
+                                  computeCost();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: DropdownButtonFormField<String>(
+                                value: fuelConsumptionDropDownValue,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                                dropdownColor: Theme.of(context).colorScheme.surface,
+                                items: fuelConsumptionDropDownValues.map((String items) {
+                                  return DropdownMenuItem(
+                                    value: items,
+                                    child: Text(
+                                      items,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    fuelConsumptionDropDownValue = newValue!;
+                                  });
+                                  computeCost();
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -406,68 +422,74 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                   elevation: 2,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          flex: 2,
-                          child: const Text(
-                            "Distance",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
+                        const Text(
+                          "Distance",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         ),
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 16),
-                            decoration: InputDecoration(
-                              hintText: 'e.g. 100',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-                            controller: distanceTextEditingController,
-                            onChanged: (String? newValue) {
-                              computeCost();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 3,
-                          child: DropdownButtonFormField<String>(
-                            value: distanceDropDownValue,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            ),
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            dropdownColor: Theme.of(context).colorScheme.surface,
-                            items: distanceDropDownValues.map((String items) {
-                              return DropdownMenuItem(
-                                value: items,
-                                child: Text(
-                                  items,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface,
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(fontSize: 16),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. 100',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                 ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                distanceDropDownValue = newValue!;
-                              });
-                              computeCost();
-                            },
-                          ),
+                                keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
+                                controller: distanceTextEditingController,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                ],
+                                onChanged: (String? newValue) {
+                                  computeCost();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: DropdownButtonFormField<String>(
+                                value: distanceDropDownValue,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                                dropdownColor: Theme.of(context).colorScheme.surface,
+                                items: distanceDropDownValues.map((String items) {
+                                  return DropdownMenuItem(
+                                    value: items,
+                                    child: Text(
+                                      items,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    distanceDropDownValue = newValue!;
+                                  });
+                                  computeCost();
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -480,30 +502,59 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                   color: Theme.of(context).colorScheme.primaryContainer,
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Cost: ",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: costTextEditingController,
-                            enabled: false,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: costTextEditingController.text.isEmpty
-                                  ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
-                                  : Theme.of(context).colorScheme.onPrimaryContainer,
+                        Row(
+                          children: [
+                            const Text(
+                              "Total Cost: ",
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                             ),
-                            textAlign: TextAlign.right,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: "Enter values above",
+                            Expanded(
+                              child: TextField(
+                                controller: costTextEditingController,
+                                enabled: false,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: costTextEditingController.text.isEmpty
+                                      ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
+                                      : Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                                textAlign: TextAlign.right,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: "Enter values above",
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_costPerUnit != null && _totalCost != null && _totalCost! > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Cost per ${distanceDropDownValue == "km" ? "km" : "mile"}: ",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8),
+                                  ),
+                                ),
+                                Text(
+                                  _getCostPerUnitDisplay(),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -532,6 +583,10 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                                       fuelConsumptionTextEditingController.clear();
                                       distanceTextEditingController.clear();
                                       costTextEditingController.clear();
+                                      setState(() {
+                                        _totalCost = null;
+                                        _costPerUnit = null;
+                                      });
                                       Navigator.pop(context);
                                     },
                                     child: const Text("Clear"),
@@ -543,6 +598,19 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                         },
                         icon: const Icon(Icons.clear),
                         label: const Text("Clear"),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _totalCost != null && _totalCost! > 0
+                            ? _shareResults
+                            : null,
+                        icon: const Icon(Icons.share),
+                        label: const Text("Share"),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
@@ -663,13 +731,37 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
     if (fuelPriceTextEditingController.text.isEmpty ||
         fuelConsumptionTextEditingController.text.isEmpty ||
         distanceTextEditingController.text.isEmpty) {
-      costTextEditingController.text = "";
+      setState(() {
+        costTextEditingController.text = "";
+        _totalCost = null;
+        _costPerUnit = null;
+      });
       return;
     }
 
-    double fuelPrice = double.parse(fuelPriceTextEditingController.text);
-    double fuelConsumption = double.parse(fuelConsumptionTextEditingController.text);
-    double distance = double.parse(distanceTextEditingController.text);
+    // Validate and parse inputs with error handling
+    double? fuelPrice = _parseDouble(fuelPriceTextEditingController.text);
+    double? fuelConsumption = _parseDouble(fuelConsumptionTextEditingController.text);
+    double? distance = _parseDouble(distanceTextEditingController.text);
+
+    if (fuelPrice == null || fuelConsumption == null || distance == null) {
+      setState(() {
+        costTextEditingController.text = "";
+        _totalCost = null;
+        _costPerUnit = null;
+      });
+      return;
+    }
+
+    // Validate positive values
+    if (fuelPrice <= 0 || fuelConsumption <= 0 || distance <= 0) {
+      setState(() {
+        costTextEditingController.text = "";
+        _totalCost = null;
+        _costPerUnit = null;
+      });
+      return;
+    }
 
     // Converts all distances to miles
     double kmToMile = 0.6213711922;
@@ -708,25 +800,100 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
 
     // Convert all fuel prices to imperial gallon
     double calculation = fuelPrice * distance / fuelConsumption;
+    double costPerUnit = calculation / distance;
 
+    setState(() {
+      _totalCost = calculation;
+      _costPerUnit = costPerUnit;
+
+      switch(fuelPriceDropDownValue) {
+        case "£ per litre":
+          costTextEditingController.text = "£${calculation.toStringAsFixed(2)}";
+          break;
+        case "\$ per gallon":
+        case "\$ per litre":
+          costTextEditingController.text = "\$${calculation.toStringAsFixed(2)}";
+          break;
+        case "€ per litre":
+          costTextEditingController.text = "€${calculation.toStringAsFixed(2)}";
+          break;
+        case "Rs. per litre":
+          costTextEditingController.text = "Rs. ${calculation.toStringAsFixed(2)}";
+          break;
+        case "¥ per litre":
+          costTextEditingController.text = "¥${calculation.toStringAsFixed(2)}";
+          break;
+      }
+    });
+  }
+
+  double? _parseDouble(String value) {
+    if (value.isEmpty) return null;
+    try {
+      final parsed = double.parse(value);
+      if (parsed.isNaN || parsed.isInfinite) return null;
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _getCostPerUnitDisplay() {
+    if (_costPerUnit == null) return "";
+    
+    String currencySymbol = "";
     switch(fuelPriceDropDownValue) {
       case "£ per litre":
-        costTextEditingController.text = "£${calculation.toStringAsFixed(2)}";
+        currencySymbol = "£";
         break;
       case "\$ per gallon":
       case "\$ per litre":
-        costTextEditingController.text = "\$${calculation.toStringAsFixed(2)}";
+        currencySymbol = "\$";
         break;
       case "€ per litre":
-        costTextEditingController.text = "€${calculation.toStringAsFixed(2)}";
+        currencySymbol = "€";
         break;
       case "Rs. per litre":
-        costTextEditingController.text = "Rs. ${calculation.toStringAsFixed(2)}";
+        currencySymbol = "Rs. ";
         break;
       case "¥ per litre":
-        costTextEditingController.text = "¥${calculation.toStringAsFixed(2)}";
+        currencySymbol = "¥";
         break;
     }
+    
+    String unit = distanceDropDownValue == "km" ? "km" : "mile";
+    return "$currencySymbol${_costPerUnit!.toStringAsFixed(3)}/$unit";
+  }
+
+  void _shareResults() {
+    if (_totalCost == null || _totalCost! <= 0) return;
+
+    String fuelPrice = fuelPriceTextEditingController.text;
+    String fuelConsumption = fuelConsumptionTextEditingController.text;
+    String distance = distanceTextEditingController.text;
+    String cost = costTextEditingController.text;
+    String costPerUnit = _getCostPerUnitDisplay();
+
+    String shareText = """Fuel Cost Calculation
+
+Fuel Price: $fuelPrice $fuelPriceDropDownValue
+Fuel Consumption: $fuelConsumption $fuelConsumptionDropDownValue
+Distance: $distance $distanceDropDownValue
+
+Total Cost: $cost
+Cost per ${distanceDropDownValue == "km" ? "km" : "mile"}: $costPerUnit
+
+Calculated by Fuel Cost Calculator""";
+
+    Clipboard.setData(ClipboardData(text: shareText));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Results copied to clipboard!"),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> saveState() async {

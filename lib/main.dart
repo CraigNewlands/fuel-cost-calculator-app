@@ -184,6 +184,8 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
   
   double? _totalCost;
   double? _costPerUnit;
+  int _numberOfPeople = 1;
+  bool _showSplitOption = true;
 
   @override
   void initState() {
@@ -227,6 +229,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
       if (prefs.getString("costValue") != null) {
         costTextEditingController.text = prefs.getString("costValue")!;
       }
+      _showSplitOption = prefs.getBool("showSplitOption") ?? true;
     });
   }
 
@@ -243,13 +246,15 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
           actions: [
             IconButton(
               icon: const Icon(Icons.settings),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const SettingsScreen(),
                   ),
                 );
+                // Reload preferences when returning from settings
+                loadState();
               },
             ),
           ],
@@ -495,8 +500,62 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                     ),
                   ),
                 ),
+                if (_showSplitOption) ...[
+                  const SizedBox(height: 12),
+                  // Fourth row - Split Cost
+                  Card(
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Split Between",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              IconButton.outlined(
+                                onPressed: _numberOfPeople > 1
+                                    ? () {
+                                        setState(() {
+                                          _numberOfPeople--;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.remove),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  "$_numberOfPeople ${_numberOfPeople == 1 ? 'person' : 'people'}",
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              IconButton.outlined(
+                                onPressed: _numberOfPeople < 20
+                                    ? () {
+                                        setState(() {
+                                          _numberOfPeople++;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.add),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
-                // Fourth row - Cost Result
+                // Fifth row - Cost Result
                 Card(
                   elevation: 3,
                   color: Theme.of(context).colorScheme.primaryContainer,
@@ -531,6 +590,48 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                             ),
                           ],
                         ),
+                        if (_showSplitOption && _totalCost != null && _totalCost! > 0 && _numberOfPeople > 1)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people,
+                                        size: 20,
+                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Cost per person:",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    _getCostPerPersonDisplay(),
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         if (_costPerUnit != null && _totalCost != null && _totalCost! > 0)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
@@ -586,6 +687,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                                       setState(() {
                                         _totalCost = null;
                                         _costPerUnit = null;
+                                        _numberOfPeople = 1;
                                       });
                                       Navigator.pop(context);
                                     },
@@ -838,31 +940,34 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
     }
   }
 
-  String _getCostPerUnitDisplay() {
-    if (_costPerUnit == null) return "";
-    
-    String currencySymbol = "";
+  String _getCurrencySymbol() {
     switch(fuelPriceDropDownValue) {
       case "£ per litre":
-        currencySymbol = "£";
-        break;
+        return "£";
       case "\$ per gallon":
       case "\$ per litre":
-        currencySymbol = "\$";
-        break;
+        return "\$";
       case "€ per litre":
-        currencySymbol = "€";
-        break;
+        return "€";
       case "Rs. per litre":
-        currencySymbol = "Rs. ";
-        break;
+        return "Rs. ";
       case "¥ per litre":
-        currencySymbol = "¥";
-        break;
+        return "¥";
+      default:
+        return "";
     }
-    
+  }
+
+  String _getCostPerUnitDisplay() {
+    if (_costPerUnit == null) return "";
     String unit = distanceDropDownValue == "km" ? "km" : "mile";
-    return "$currencySymbol${_costPerUnit!.toStringAsFixed(3)}/$unit";
+    return "${_getCurrencySymbol()}${_costPerUnit!.toStringAsFixed(3)}/$unit";
+  }
+
+  String _getCostPerPersonDisplay() {
+    if (_totalCost == null || _numberOfPeople <= 0) return "";
+    double costPerPerson = _totalCost! / _numberOfPeople;
+    return "${_getCurrencySymbol()}${costPerPerson.toStringAsFixed(2)}";
   }
 
   void _shareResults() {
@@ -874,13 +979,18 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
     String cost = costTextEditingController.text;
     String costPerUnit = _getCostPerUnitDisplay();
 
+    String splitInfo = "";
+    if (_numberOfPeople > 1) {
+      splitInfo = "\nSplit between $_numberOfPeople people: ${_getCostPerPersonDisplay()} each";
+    }
+
     String shareText = """Fuel Cost Calculation
 
 Fuel Price: $fuelPrice $fuelPriceDropDownValue
 Fuel Consumption: $fuelConsumption $fuelConsumptionDropDownValue
 Distance: $distance $distanceDropDownValue
 
-Total Cost: $cost
+Total Cost: $cost$splitInfo
 Cost per ${distanceDropDownValue == "km" ? "km" : "mile"}: $costPerUnit
 
 Calculated by Fuel Cost Calculator""";
@@ -917,17 +1027,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
+  bool _showSplitOption = true;
 
   @override
   void initState() {
     super.initState();
-    _loadDarkModePreference();
+    _loadPreferences();
   }
 
-  Future<void> _loadDarkModePreference() async {
+  Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _isDarkMode = prefs.getBool('darkMode') ?? false;
+      _showSplitOption = prefs.getBool('showSplitOption') ?? true;
     });
   }
 
@@ -940,6 +1052,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     // Update the app theme
     MyApp.of(context)?.toggleDarkMode(value);
+  }
+
+  Future<void> _toggleSplitOption(bool value) async {
+    setState(() {
+      _showSplitOption = value;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('showSplitOption', value);
   }
 
   @override
@@ -970,6 +1090,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               secondary: Icon(
                 _isDarkMode ? Icons.dark_mode : Icons.light_mode,
               ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SwitchListTile(
+              title: const Text("Cost Splitting"),
+              subtitle: const Text("Show option to split cost between people"),
+              value: _showSplitOption,
+              onChanged: _toggleSplitOption,
+              secondary: const Icon(Icons.people),
             ),
           ),
           

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +31,9 @@ class MyApp extends StatefulWidget {
       context.findAncestorStateOfType<_MyAppState>();
 }
 
+// Global key for ScaffoldMessenger to show snackbars reliably
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 class _MyAppState extends State<MyApp> {
   bool _isDarkMode = false;
 
@@ -49,6 +54,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -186,6 +192,8 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
   double? _costPerUnit;
   int _numberOfPeople = 1;
   bool _showSplitOption = true;
+  bool _isDetectingLocation = false;
+  String? _detectedRegion;
 
   @override
   void initState() {
@@ -229,7 +237,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
       if (prefs.getString("costValue") != null) {
         costTextEditingController.text = prefs.getString("costValue")!;
       }
-      _showSplitOption = prefs.getBool("showSplitOption") ?? true;
+      _showSplitOption = prefs.getBool("showSplitOption") ?? false;
     });
   }
 
@@ -331,6 +339,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     fuelPriceDropDownValue = newValue!;
+                                    _detectedRegion = null; // Reset when manually changed
                                   });
                                   computeCost();
                                 },
@@ -410,6 +419,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     fuelConsumptionDropDownValue = newValue!;
+                                    _detectedRegion = null; // Reset when manually changed
                                   });
                                   computeCost();
                                 },
@@ -489,6 +499,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     distanceDropDownValue = newValue!;
+                                    _detectedRegion = null; // Reset when manually changed
                                   });
                                   computeCost();
                                 },
@@ -723,7 +734,7 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                       child: FilledButton.icon(
                         onPressed: () {
                           saveState();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          scaffoldMessengerKey.currentState?.showSnackBar(
                             const SnackBar(
                               content: Text("Details saved successfully!"),
                               behavior: SnackBarBehavior.floating,
@@ -1016,6 +1027,162 @@ Calculated by Fuel Cost Calculator""";
     prefs.setString("distanceValue", distanceTextEditingController.text);
     prefs.setString("costValue", costTextEditingController.text);
   }
+
+  Future<void> _detectLocationAndSetUnits() async {
+    // Prevent multiple simultaneous requests
+    if (_isDetectingLocation) return;
+    
+    setState(() {
+      _isDetectingLocation = true;
+    });
+
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showLocationError('Location services are disabled. Please enable them in settings.');
+        return;
+      }
+
+      // Check and request permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showLocationError('Location permissions are denied.');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showLocationError('Location permissions are permanently denied. Please enable them in app settings.');
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+      );
+
+      // Get country from coordinates
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        String? countryCode = placemarks[0].isoCountryCode;
+        String? countryName = placemarks[0].country;
+        
+        _applyRegionSettings(countryCode, countryName);
+      } else {
+        _showLocationError('Could not determine your location.');
+      }
+    } catch (e) {
+      _showLocationError('Error detecting location: ${e.toString()}');
+    } finally {
+      // Always reset the flag, even if widget is not mounted
+      _isDetectingLocation = false;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _applyRegionSettings(String? countryCode, String? countryName) {
+    String regionKey;
+    
+    // Map country codes to regions
+    switch (countryCode?.toUpperCase()) {
+      case 'GB':
+      case 'UK':
+        regionKey = 'UK';
+        break;
+      case 'US':
+        regionKey = 'US';
+        break;
+      case 'AU':
+        regionKey = 'Australia';
+        break;
+      case 'IN':
+        regionKey = 'India';
+        break;
+      case 'CN':
+        regionKey = 'China';
+        break;
+      // European countries
+      case 'DE':
+      case 'FR':
+      case 'IT':
+      case 'ES':
+      case 'NL':
+      case 'BE':
+      case 'AT':
+      case 'CH':
+      case 'PT':
+      case 'PL':
+      case 'SE':
+      case 'NO':
+      case 'DK':
+      case 'FI':
+      case 'IE':
+      case 'GR':
+      case 'CZ':
+      case 'HU':
+      case 'RO':
+      case 'BG':
+      case 'HR':
+      case 'SK':
+      case 'SI':
+      case 'LT':
+      case 'LV':
+      case 'EE':
+      case 'LU':
+      case 'MT':
+      case 'CY':
+        regionKey = 'Europe';
+        break;
+      // Countries using miles
+      case 'MM': // Myanmar
+      case 'LR': // Liberia
+        regionKey = 'US'; // Use US as they use miles
+        break;
+      default:
+        // Default to Europe for metric countries
+        regionKey = 'Europe';
+    }
+
+    Region? region = regionMap[regionKey];
+    if (region != null) {
+      setState(() {
+        fuelPriceDropDownValue = region.fuelPriceUnits;
+        fuelConsumptionDropDownValue = region.fuelConsumptionUnits;
+        distanceDropDownValue = region.distanceUnits;
+        _detectedRegion = regionKey;
+      });
+      
+      computeCost();
+      
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('Units set for $regionKey (${countryName ?? countryCode})'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  void _showLocationError(String message) {
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 }
 
 class SettingsScreen extends StatefulWidget {
@@ -1025,9 +1192,193 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
+class _LocationDetectionTile extends StatefulWidget {
+  const _LocationDetectionTile();
+
+  @override
+  State<_LocationDetectionTile> createState() => _LocationDetectionTileState();
+}
+
+class _LocationDetectionTileState extends State<_LocationDetectionTile> {
+  bool _isDetecting = false;
+
+  Future<void> _detectLocation() async {
+    if (_isDetecting) return;
+    
+    setState(() {
+      _isDetecting = true;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showError('Location services are disabled. Please enable them in settings.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showError('Location permissions are denied.');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showError('Location permissions are permanently denied. Please enable them in app settings.');
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+      );
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        String? countryCode = placemarks[0].isoCountryCode;
+        String? countryName = placemarks[0].country;
+        
+        _applyRegionSettings(countryCode, countryName);
+      } else {
+        _showError('Could not determine your location.');
+      }
+    } catch (e) {
+      _showError('Error detecting location: ${e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDetecting = false;
+        });
+      }
+    }
+  }
+
+  void _applyRegionSettings(String? countryCode, String? countryName) {
+    final regionMap = {
+      'UK': Region('UK', '£ per litre', 'mpg', 'miles', 'Cost (£)'),
+      'US': Region('US', '\$ per gallon', 'mpg (US)', 'miles', 'Cost (\$)'),
+      'Europe': Region('Europe', '€ per litre', 'L/100km', 'km', 'Cost (€)'),
+      'Australia': Region('Australia', '\$ per litre', 'L/100km', 'km', 'Cost (\$)'),
+      'India': Region('India', 'Rs. per litre', 'L/100km', 'km', 'Cost (Rs.)'),
+      'China': Region('China', '¥ per litre', 'L/100km', 'km', 'Cost (¥)'),
+    };
+
+    String regionKey;
+    switch (countryCode?.toUpperCase()) {
+      case 'GB':
+      case 'UK':
+        regionKey = 'UK';
+        break;
+      case 'US':
+        regionKey = 'US';
+        break;
+      case 'AU':
+        regionKey = 'Australia';
+        break;
+      case 'IN':
+        regionKey = 'India';
+        break;
+      case 'CN':
+        regionKey = 'China';
+        break;
+      case 'DE':
+      case 'FR':
+      case 'IT':
+      case 'ES':
+      case 'NL':
+      case 'BE':
+      case 'AT':
+      case 'CH':
+      case 'PT':
+      case 'PL':
+      case 'SE':
+      case 'NO':
+      case 'DK':
+      case 'FI':
+      case 'IE':
+      case 'GR':
+      case 'CZ':
+      case 'HU':
+      case 'RO':
+      case 'BG':
+      case 'HR':
+      case 'SK':
+      case 'SI':
+      case 'LT':
+      case 'LV':
+      case 'EE':
+      case 'LU':
+      case 'MT':
+      case 'CY':
+        regionKey = 'Europe';
+        break;
+      case 'MM':
+      case 'LR':
+        regionKey = 'US';
+        break;
+      default:
+        regionKey = 'Europe';
+    }
+
+    Region? region = regionMap[regionKey];
+    if (region != null) {
+      // Update main screen via shared preferences
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('fuelPriceDropDownValue', region.fuelPriceUnits);
+        prefs.setString('fuelConsumptionDropDownValue', region.fuelConsumptionUnits);
+        prefs.setString('distanceDropDownValue', region.distanceUnits);
+      });
+
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('Units set for $regionKey (${countryName ?? countryCode}). Return to main screen to see changes.'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: _isDetecting
+          ? SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : const Icon(Icons.my_location),
+      title: const Text("Set Units from Location"),
+      subtitle: const Text("Auto-detect your region's units"),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: _isDetecting ? null : _detectLocation,
+    );
+  }
+}
+
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
-  bool _showSplitOption = true;
+  bool _showSplitOption = false;
 
   @override
   void initState() {
@@ -1039,7 +1390,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _isDarkMode = prefs.getBool('darkMode') ?? false;
-      _showSplitOption = prefs.getBool('showSplitOption') ?? true;
+      _showSplitOption = prefs.getBool('showSplitOption') ?? false;
     });
   }
 
@@ -1101,6 +1452,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: _toggleSplitOption,
               secondary: const Icon(Icons.people),
             ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: _LocationDetectionTile(),
           ),
           
           const SizedBox(height: 24),

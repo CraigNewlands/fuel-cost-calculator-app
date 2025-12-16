@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-5023602983290990~8793197731</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs your location to set the correct units for your region.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>SKAdNetworkItems</key>

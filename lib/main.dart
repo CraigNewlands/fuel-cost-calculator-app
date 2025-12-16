@@ -8,32 +8,95 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MobileAds.instance.initialize();
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme(
-        brightness: Brightness.light,
-        primary: Colors.deepOrange, // Vibrant orange for primary actions
-        onPrimary: Colors.white,
-        secondary: Colors.deepOrange.shade700,
-        onSecondary: Colors.white,
-        tertiary: Colors.orange.shade300,
-        onTertiary: Colors.black87,
-        error: Colors.red,
-        onError: Colors.white,
-        surface: Colors.white,
-        onSurface: Colors.black87,
-        surfaceContainerHighest: Colors.grey.shade100,
-        primaryContainer: Colors.deepOrange.shade50,
-        onPrimaryContainer: Colors.deepOrange.shade900,
+  
+  // Load dark mode preference
+  final prefs = await SharedPreferences.getInstance();
+  final isDarkMode = prefs.getBool('darkMode') ?? false;
+  
+  runApp(MyApp(isDarkMode: isDarkMode));
+}
+
+class MyApp extends StatefulWidget {
+  final bool isDarkMode;
+  
+  const MyApp({super.key, required this.isDarkMode});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+  
+  static _MyAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_MyAppState>();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isDarkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isDarkMode = widget.isDarkMode;
+  }
+
+  void toggleDarkMode(bool value) async {
+    setState(() {
+      _isDarkMode = value;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('darkMode', value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme(
+          brightness: Brightness.light,
+          primary: Colors.deepOrange,
+          onPrimary: Colors.white,
+          secondary: Colors.deepOrange.shade700,
+          onSecondary: Colors.white,
+          tertiary: Colors.orange.shade300,
+          onTertiary: Colors.black87,
+          error: Colors.red,
+          onError: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black87,
+          surfaceContainerHighest: Colors.grey.shade100,
+          primaryContainer: Colors.deepOrange.shade50,
+          onPrimaryContainer: Colors.deepOrange.shade900,
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+        ),
       ),
-      appBarTheme: const AppBarTheme(
-        centerTitle: true,
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme(
+          brightness: Brightness.dark,
+          primary: Colors.deepOrange,
+          onPrimary: Colors.white,
+          secondary: Colors.deepOrange.shade300,
+          onSecondary: Colors.black87,
+          tertiary: Colors.orange.shade700,
+          onTertiary: Colors.white,
+          error: Colors.red.shade300,
+          onError: Colors.white,
+          surface: Colors.grey.shade900,
+          onSurface: Colors.white,
+          surfaceContainerHighest: Colors.grey.shade800,
+          primaryContainer: Colors.deepOrange.shade900,
+          onPrimaryContainer: Colors.deepOrange.shade100,
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+        ),
       ),
-    ),
-    home: const FuelCostCalculator(),
-  ));
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      home: const FuelCostCalculator(),
+    );
+  }
 }
 
 class FuelCostCalculator extends StatefulWidget {
@@ -173,6 +236,19 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
         appBar: AppBar(
           title: const Text("Fuel Cost Calculator"),
           elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -223,12 +299,20 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                               ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             ),
-                            style: const TextStyle(fontSize: 16, color: Colors.black87),
-                            dropdownColor: Colors.white,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            dropdownColor: Theme.of(context).colorScheme.surface,
                             items: fuelPriceDropDownValues.map((String items) {
                               return DropdownMenuItem(
                                 value: items,
-                                child: Text(items, style: const TextStyle(color: Colors.black87)),
+                                child: Text(
+                                  items,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -288,12 +372,20 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                               ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             ),
-                            style: const TextStyle(fontSize: 16, color: Colors.black87),
-                            dropdownColor: Colors.white,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            dropdownColor: Theme.of(context).colorScheme.surface,
                             items: fuelConsumptionDropDownValues.map((String items) {
                               return DropdownMenuItem(
                                 value: items,
-                                child: Text(items, style: const TextStyle(color: Colors.black87)),
+                                child: Text(
+                                  items,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -353,12 +445,20 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
                               ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             ),
-                            style: const TextStyle(fontSize: 16, color: Colors.black87),
-                            dropdownColor: Colors.white,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            dropdownColor: Theme.of(context).colorScheme.surface,
                             items: distanceDropDownValues.map((String items) {
                               return DropdownMenuItem(
                                 value: items,
-                                child: Text(items, style: const TextStyle(color: Colors.black87)),
+                                child: Text(
+                                  items,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -638,6 +738,109 @@ class _FuelCostCalculatorState extends State<FuelCostCalculator> {
     prefs.setString("fuelConsumptionValue", fuelConsumptionTextEditingController.text);
     prefs.setString("distanceValue", distanceTextEditingController.text);
     prefs.setString("costValue", costTextEditingController.text);
+  }
+}
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDarkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDarkModePreference();
+  }
+
+  Future<void> _loadDarkModePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isDarkMode = prefs.getBool('darkMode') ?? false;
+    });
+  }
+
+  Future<void> _toggleDarkMode(bool value) async {
+    setState(() {
+      _isDarkMode = value;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('darkMode', value);
+    
+    // Update the app theme
+    MyApp.of(context)?.toggleDarkMode(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Settings"),
+      ),
+      body: ListView(
+        children: [
+          // App Settings Section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            child: Text(
+              "App Settings",
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SwitchListTile(
+              title: const Text("Dark Mode"),
+              subtitle: const Text("Toggle between light and dark theme"),
+              value: _isDarkMode,
+              onChanged: _toggleDarkMode,
+              secondary: Icon(
+                _isDarkMode ? Icons.dark_mode : Icons.light_mode,
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // About Section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              "About",
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text("Fuel Cost Calculator"),
+                  subtitle: const Text("Version 1.0.2"),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    "Calculate fuel costs for your journey with support for multiple currencies and units.",
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
